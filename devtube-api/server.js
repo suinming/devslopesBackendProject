@@ -1,6 +1,10 @@
 const express = require('express')
 const dotenv = require('dotenv')
 const app = express()
+
+// Parse the JSON
+app.use(express.json())
+
 const morgan = require('morgan')
 const connectDB = require('./config/db.js')
 
