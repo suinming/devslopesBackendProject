@@ -39,7 +39,7 @@ exports.createCourse = async (req, res, next) => {
   console.log(req.body)
   try {
     const course = await Course.create(req.body)
-    res.status(201).json({success:true, date:course})
+    res.status(201).json({success:true, data:course})
 
   } catch (error) {
 
@@ -48,7 +48,7 @@ exports.createCourse = async (req, res, next) => {
 }
 
 // @desc update a course
-// @route POST api/v1/courses/:id
+// @route PUT api/v1/courses/:id
 // @access PRIVATE
 exports.updateCourse = async(req, res, next) => {
   try {
