@@ -1,83 +1,109 @@
+const path = require('path')
 const Course = require('../models/Course.js')
+const ErrorResponse = require('../utils/errorResponse')
+const asyncHandler = require('../middleware/async')
 
 // @desc get all courses
 // @route GET api/v1/courses
 // @access PUBLIC
-exports.getCourses = async(req, res, next) => {
-  try {
-    const courses = await Course.find({})
-    res.status(200).json({success:true, count:courses.length, data: courses})
-    
-  } catch (error) {
-    res.status(400).json({success:false}) 
-  }
-}
+exports.getCourses = asyncHandler( async(req, res, next) => {
+    res.status(200).json(res.filteredResults)
+})
 
 // @desc get single course
 // @route GET api/v1/courses/:id
 // @access PUBLIC
-exports.getCourse = async(req, res, next) => {
+exports.getCourse = asyncHandler( async(req, res, next) => {
 
-  try {
     const course = await Course.findById(req.params.id)
 
     if(!course){
-      res.status(400).json({success:false})
+      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+      // res.status(400).json({success:false})
     }
 
     res.status(200).json({success:true, data: course})
-   
-  } catch (error) {
-    res.status(400).json({success:false})
-  }
-}
+ 
+})
 
 // @desc post a course
 // @route POST api/v1/courses
 // @access PRIVATE
-exports.createCourse = async (req, res, next) => {
-  console.log(req.body)
-  try {
+exports.createCourse = asyncHandler(async (req, res, next) => {
+
     const course = await Course.create(req.body)
     res.status(201).json({success:true, data:course})
-
-  } catch (error) {
-
-    res.status(400).json({success:false}) 
-  }
-}
+})
 
 // @desc update a course
 // @route PUT api/v1/courses/:id
 // @access PRIVATE
-exports.updateCourse = async(req, res, next) => {
-  try {
+exports.updateCourse = asyncHandler(async(req, res, next) => {
+
     const course = await Course.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     }) 
 
     if(!course){
-      res.status(400).json({success: false})
+      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+      // res.status(400).json({success: false})
     }
     res.status(200).json({success:true, data:course })
-
-  } catch (error) {
-    res.status(400).json({success: false})
-  }
-}
+ })
 
 // @desc delete a course
 // @route DELETE api/v1/courses/:id
 // @access PRIVATE
-exports.deleteCourse = async(req, res, next) => {
-  try {
+exports.deleteCourse = asyncHandler(async(req, res, next) => {
+
     const course = await Course.findByIdAndDelete(req.params.id) 
+
     if(!course){
-      res.status(400).json({success:false})
+      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+      // res.status(400).json({success:false})
     }
     res.status(200).json({success:true, data:{}})
-  } catch (error) {
-    res.status(400).json({success:false})
-  }
-}
+})
+
+// @desc upload a course photo
+// @route PUT api/v1/courses/:id/photo
+// @access PRIVATE
+exports.courseUploadPhoto = asyncHandler(async(req, res, next) => {
+
+    const course = await Course.findById(req.params.id) 
+    if(!course){
+      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+      // res.status(400).json({success:false})
+    }
+
+    const file = req.files.file
+    
+    // check if user upload a file
+    if(!file){
+      return next(new ErrorResponse(`please upload a file`, 400))
+      // res.status(400).json({success:false})
+    }
+
+    // check if user upload a image 
+    if(!file.mimetype.startsWith('image')){
+      return next(new ErrorResponse(`please upload an image`, 400))
+    }
+
+    // check if user upload a image size greater than  
+    if(file.size >= process.env.MAX_FILE_SIZE){
+      return next(new ErrorResponse(`please upload an image less than ${process.env.MAX-FILE_SIZE }byte`, 400))
+    }
+    
+    file.name = `photo_${course._id}${path.parse(file.name).ext}`
+    
+    // move the file to the target dir
+    file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async err => {
+      if(err){
+        return next(new ErrorResponse(`problem with the file upload`, 500))
+      }
+      await Course.findByIdAndUpdate(req.params.id, {photo: file.name})
+      res.status(200).send({success: true, data:file.name})
+    })
+
+})
