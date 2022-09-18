@@ -30,9 +30,10 @@ exports.getCourse = asyncHandler( async(req, res, next) => {
 // @route POST api/v1/courses
 // @access PRIVATE
 exports.createCourse = asyncHandler(async (req, res, next) => {
+  req.body.user = req.user.id
 
-    const course = await Course.create(req.body)
-    res.status(201).json({success:true, data:course})
+  const course = await Course.create(req.body)
+  res.status(201).json({success:true, data:course})
 })
 
 // @desc update a course
@@ -40,16 +41,24 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 // @access PRIVATE
 exports.updateCourse = asyncHandler(async(req, res, next) => {
 
-    const course = await Course.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    }) 
+  let course = await Course.findById(req.params.id) 
 
-    if(!course){
-      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
-      // res.status(400).json({success: false})
-    }
-    res.status(200).json({success:true, data:course })
+  if(!course){
+    return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+    // res.status(400).json({success: false})
+  }
+
+  if(course.user.toString() !== req.user.id && req.user.role !== 'admin'){
+    return next(new ErrorResponse(`User ${req.params.id} is not authorize to update this course`, 401))
+  }
+
+  course = await Course.findByIdAndUpdate(req.params.id, req.body, {
+    new:true,
+    runValidators:true,
+  })
+
+  
+  res.status(200).json({success:true, data:course })
  })
 
 // @desc delete a course
@@ -57,13 +66,20 @@ exports.updateCourse = asyncHandler(async(req, res, next) => {
 // @access PRIVATE
 exports.deleteCourse = asyncHandler(async(req, res, next) => {
 
-    const course = await Course.findByIdAndDelete(req.params.id) 
+  const course = await Course.findById(req.params.id) 
 
-    if(!course){
-      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
-      // res.status(400).json({success:false})
-    }
-    res.status(200).json({success:true, data:{}})
+  if(!course){
+    return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+    // res.status(400).json({success:false})
+  }
+
+  if(course.user.toString() !== req.user.id && req.user.role !== 'admin'){
+    return next(new ErrorResponse(`User ${req.params.id} is not authorize to delete this course`, 401))
+  }
+
+  course.remove()
+
+  res.status(200).json({success:true, data:{}})
 })
 
 // @desc upload a course photo
@@ -71,39 +87,43 @@ exports.deleteCourse = asyncHandler(async(req, res, next) => {
 // @access PRIVATE
 exports.courseUploadPhoto = asyncHandler(async(req, res, next) => {
 
-    const course = await Course.findById(req.params.id) 
-    if(!course){
-      return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
-      // res.status(400).json({success:false})
-    }
+  const course = await Course.findById(req.params.id) 
+  if(!course){
+    return next(new ErrorResponse(`course not found with id ${req.params.id}`, 404))
+    // res.status(400).json({success:false})
+  }
 
-    const file = req.files.file
-    
-    // check if user upload a file
-    if(!file){
-      return next(new ErrorResponse(`please upload a file`, 400))
-      // res.status(400).json({success:false})
-    }
+  if(course.user.toString() !== req.user.id && req.user.role !== 'admin'){
+    return next(new ErrorResponse(`User ${req.params.id} is not authorize to upload the photo`, 401))
+  }
 
-    // check if user upload a image 
-    if(!file.mimetype.startsWith('image')){
-      return next(new ErrorResponse(`please upload an image`, 400))
-    }
+  const file = req.files.file
+  
+  // check if user upload a file
+  if(!file){
+    return next(new ErrorResponse(`please upload a file`, 400))
+    // res.status(400).json({success:false})
+  }
 
-    // check if user upload a image size greater than  
-    if(file.size >= process.env.MAX_FILE_SIZE){
-      return next(new ErrorResponse(`please upload an image less than ${process.env.MAX-FILE_SIZE }byte`, 400))
+  // check if user upload a image 
+  if(!file.mimetype.startsWith('image')){
+    return next(new ErrorResponse(`please upload an image`, 400))
+  }
+
+  // check if user upload a image size greater than  
+  if(file.size >= process.env.MAX_FILE_SIZE){
+    return next(new ErrorResponse(`please upload an image less than ${process.env.MAX-FILE_SIZE }byte`, 400))
+  }
+  
+  file.name = `photo_${course._id}${path.parse(file.name).ext}`
+  
+  // move the file to the target dir
+  file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async err => {
+    if(err){
+      return next(new ErrorResponse(`problem with the file upload`, 500))
     }
-    
-    file.name = `photo_${course._id}${path.parse(file.name).ext}`
-    
-    // move the file to the target dir
-    file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async err => {
-      if(err){
-        return next(new ErrorResponse(`problem with the file upload`, 500))
-      }
-      await Course.findByIdAndUpdate(req.params.id, {photo: file.name})
-      res.status(200).send({success: true, data:file.name})
-    })
+    await Course.findByIdAndUpdate(req.params.id, {photo: file.name})
+    res.status(200).send({success: true, data:file.name})
+  })
 
 })

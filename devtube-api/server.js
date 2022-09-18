@@ -6,6 +6,7 @@ const errorHandler = require('./middleware/error')
 const fileUpload = require('express-fileupload')
 const morgan = require('morgan')
 const connectDB = require('./config/db.js')
+const cookieParser = require('cookie-parser')
 
 // set the env variables
 dotenv.config({path:'./config/config.env'})
@@ -24,6 +25,8 @@ if(process.env.NODE_ENV === 'development') {
 
 // Parse the JSON
 app.use(express.json())
+
+app.use(cookieParser())
 
 app.use(fileUpload())
 
