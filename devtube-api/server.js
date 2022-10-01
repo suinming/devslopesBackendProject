@@ -18,6 +18,8 @@ connectDB()
 // routes files
 const courses = require('./routes/courses.js')
 const auth = require('./routes/auth.js')
+const users = require('./routes/users.js')
+const reviews = require('./routes/reviews.js')
 
 if(process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
@@ -36,6 +38,10 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.use('/api/v1/courses', courses)
 
 app.use('/api/v1/auth', auth)
+
+app.use('/api/v1/users', users)
+
+app.use('/api/v1/reviews', reviews)
 
 // error handle
 app.use(errorHandler)
