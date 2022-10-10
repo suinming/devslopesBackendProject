@@ -8,6 +8,14 @@ const morgan = require('morgan')
 const connectDB = require('./config/db.js')
 const cookieParser = require('cookie-parser')
 
+// security purpose npm package
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require('helmet')
+const xss = require('xss-clean')
+const rateLimit = require('express-rate-limit')
+const hpp = require('hpp')
+const cors = require('cors')
+
 // set the env variables
 dotenv.config({path:'./config/config.env'})
 const PORT = process.env.PORT || 5000 
@@ -31,6 +39,20 @@ app.use(express.json())
 app.use(cookieParser())
 
 app.use(fileUpload())
+
+app.use(mongoSanitize()); // use the mongo sanitize
+app.use(helmet()); // use the helmet 
+app.use(xss()); // use the xss clean 
+app.use(hpp()) // use the hpp
+app.use(cors()); // use the cors  
+
+// set the rate limit obj
+const limiter = rateLimit({
+	windowMs: 10 * 60 * 1000, // 15 minutes
+	max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+})
+
+app.use(limiter) // use the rate limit 
 
 app.use(express.static(path.join(__dirname, 'public')))
 

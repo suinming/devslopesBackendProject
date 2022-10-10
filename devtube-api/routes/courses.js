@@ -5,7 +5,9 @@ const Course = require('../models/Course')
 
 const {getCourses, getCourse, createCourse, updateCourse, deleteCourse, courseUploadPhoto} = require("../controllers/courses.js")
 const {protect, authorize} = require('../middleware/auth.js')
+const reviewRouter = require("./reviews")
 
+// course router
 router.route('/')
   .get(filteredResults(Course), getCourses)
   .post(protect, authorize('publisher', 'admin'),createCourse)
@@ -17,6 +19,9 @@ router.route('/:id')
 
 router.route('/:id/photo')
   .put(protect, authorize('publisher', 'admin'), courseUploadPhoto)
+
+// review router
+router.use("/:id/reviews", reviewRouter)
 
 // router.get('/', (req, res) => {
 //   res.status(200).json({success:true, msg:'get all courses'})
